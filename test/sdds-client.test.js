@@ -92,6 +92,70 @@ test('pages retries 5xx errors up to maxAttempts with bounded delays', async () 
   assert.deepEqual(sleeps, [250, 500]);
 });
 
+test('pages retries HTTP 429 then succeeds after the expected delay', async () => {
+  const sleeps = [];
+  let calls = 0;
+  const client = createSddsClient({
+    http: {
+      async get() {
+        calls += 1;
+        if (calls === 1) throw Object.assign(new Error('rate limited'), { response: { status: 429 } });
+        return { data: { data: ['event'], page_count: 1 } };
+      },
+    },
+    oauthClient: { async getToken() { return 'token'; } },
+    apiUrl: 'https://sdds.example.com/events',
+    sleep: async (milliseconds) => sleeps.push(milliseconds),
+  });
+
+  assert.deepEqual(await collect(client.pages()), [{ pageNumber: 1, data: ['event'] }]);
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [250]);
+});
+
+test('pages propagates the final error after exhausting retry attempts', async () => {
+  const sleeps = [];
+  const finalError = Object.assign(new Error('still unavailable'), { response: { status: 503 } });
+  let calls = 0;
+  const client = createSddsClient({
+    http: {
+      async get() {
+        calls += 1;
+        throw finalError;
+      },
+    },
+    oauthClient: { async getToken() { return 'token'; } },
+    apiUrl: 'https://sdds.example.com/events',
+    sleep: async (milliseconds) => sleeps.push(milliseconds),
+    maxAttempts: 3,
+  });
+
+  await assert.rejects(() => collect(client.pages()), (error) => error === finalError);
+  assert.equal(calls, 3);
+  assert.deepEqual(sleeps, [250, 500]);
+});
+
+test('pages propagates a repeated 401 after one token refresh', async () => {
+  const repeatedUnauthorized = Object.assign(new Error('still unauthorized'), { response: { status: 401 } });
+  let tokenCalls = 0;
+  let calls = 0;
+  const client = createSddsClient({
+    http: {
+      async get() {
+        calls += 1;
+        throw repeatedUnauthorized;
+      },
+    },
+    oauthClient: { async getToken() { tokenCalls += 1; return `token-${tokenCalls}`; } },
+    apiUrl: 'https://sdds.example.com/events',
+    sleep: async () => {},
+  });
+
+  await assert.rejects(() => collect(client.pages()), (error) => error === repeatedUnauthorized);
+  assert.equal(calls, 2);
+  assert.equal(tokenCalls, 2);
+});
+
 test('pages rejects a response whose data field is not an array', async () => {
   const client = createSddsClient({
     http: { async get() { return { data: { data: 'not-an-array', page_count: 1 } }; } },
