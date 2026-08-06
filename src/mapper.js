@@ -13,6 +13,10 @@ function parseIsoDate(value) {
   }
 
   const [, year, month, day] = match;
+  if (year === '0000') {
+    return { ok: false };
+  }
+
   const date = new Date(0);
   date.setFullYear(Number(year), Number(month) - 1, Number(day));
   date.setHours(0, 0, 0, 0);

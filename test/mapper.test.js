@@ -148,3 +148,16 @@ test('mapEvent rejects an invalid first date and malformed date strings', () => 
     { ok: false, reason: 'Invalid first_batch_date' },
   );
 });
+
+test('mapEvent rejects year zero because Oracle DATE has no year zero', () => {
+  assert.deepEqual(
+    mapEvent(
+      {
+        first_batch_date: '0000-01-01',
+        last_batch_date: null,
+      },
+      references,
+    ),
+    { ok: false, reason: 'Invalid first_batch_date' },
+  );
+});
