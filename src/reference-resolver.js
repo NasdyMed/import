@@ -45,7 +45,7 @@ function createReferenceResolver(connection) {
   const formulaCache = new Map();
   const factoryCache = new Map();
 
-  return async function resolvePage(events) {
+  async function resolvePage(events) {
     const formulaCodes = missingValues(events, 'r_i_formula_code', formulaCache);
     const plantCodes = missingValues(events, 'plant_code', factoryCache);
 
@@ -72,7 +72,9 @@ function createReferenceResolver(connection) {
         : null,
       facCode: isNonEmpty(event.plant_code) ? factoryCache.get(event.plant_code) ?? null : null,
     }));
-  };
+  }
+
+  return { resolvePage };
 }
 
 module.exports = { createReferenceResolver };

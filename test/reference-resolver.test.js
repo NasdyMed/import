@@ -25,9 +25,9 @@ test('batches deduplicated lookups and aligns references with events', async () 
       { SAP_FAC_CODE: 'P-2', FAC_CODE: 'FAC-B' },
     ],
   ]);
-  const resolvePage = createReferenceResolver(connection);
+  const resolver = createReferenceResolver(connection);
 
-  const references = await resolvePage([
+  const references = await resolver.resolvePage([
     { r_i_formula_code: 'F-1', plant_code: 'P-2' },
     { r_i_formula_code: 'F-2', plant_code: 'P-1' },
     { r_i_formula_code: 'F-1', plant_code: 'P-1' },
@@ -59,10 +59,10 @@ test('reuses cached references on later pages and queries only new codes', async
     [{ FRM_CD: 'F-2', FRM_ID: 202 }],
     [{ SAP_FAC_CODE: 'P-2', FAC_CODE: 'FAC-B' }],
   ]);
-  const resolvePage = createReferenceResolver(connection);
-  await resolvePage([{ r_i_formula_code: 'F-1', plant_code: 'P-1' }]);
+  const resolver = createReferenceResolver(connection);
+  await resolver.resolvePage([{ r_i_formula_code: 'F-1', plant_code: 'P-1' }]);
 
-  const references = await resolvePage([
+  const references = await resolver.resolvePage([
     { r_i_formula_code: 'F-1', plant_code: 'P-2' },
     { r_i_formula_code: 'F-2', plant_code: 'P-1' },
   ]);
@@ -85,14 +85,14 @@ test('reuses cached references on later pages and queries only new codes', async
 
 test('caches absent codes as null and never queries them again', async () => {
   const connection = fakeConnection([[], []]);
-  const resolvePage = createReferenceResolver(connection);
+  const resolver = createReferenceResolver(connection);
 
   assert.deepEqual(
-    await resolvePage([{ r_i_formula_code: 'NO-FORMULA', plant_code: 'NO-PLANT' }]),
+    await resolver.resolvePage([{ r_i_formula_code: 'NO-FORMULA', plant_code: 'NO-PLANT' }]),
     [{ frmId: null, facCode: null }],
   );
   assert.deepEqual(
-    await resolvePage([{ r_i_formula_code: 'NO-FORMULA', plant_code: 'NO-PLANT' }]),
+    await resolver.resolvePage([{ r_i_formula_code: 'NO-FORMULA', plant_code: 'NO-PLANT' }]),
     [{ frmId: null, facCode: null }],
   );
   assert.equal(connection.calls.length, 2);
