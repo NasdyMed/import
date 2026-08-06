@@ -10,7 +10,10 @@ const REQUIRED_VARIABLES = [
 ];
 
 function loadConfig(env = process.env) {
-  const missingVariables = REQUIRED_VARIABLES.filter((name) => !env[name]);
+  const missingVariables = REQUIRED_VARIABLES.filter((name) => {
+    const value = env[name];
+    return typeof value !== 'string' || value.trim() === '';
+  });
 
   if (missingVariables.length > 0) {
     throw new Error(

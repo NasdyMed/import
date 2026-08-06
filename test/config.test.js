@@ -8,11 +8,11 @@ test('loadConfig returns structured configuration when all variables exist', () 
     TOKEN_URL: 'https://auth.example.com/token',
     API_URL: 'https://api.example.com',
     CLIENT_ID: 'client-id',
-    CLIENT_SECRET: 'client-secret',
+    CLIENT_SECRET: '  client-secret  ',
     SCOPE: 'imports.write',
     ORACLE_USER: 'importer',
     ORACLE_PASSWORD: 'oracle-password',
-    ORACLE_CONNECT_STRING: 'db.example.com/service',
+    ORACLE_CONNECT_STRING: '  db.example.com/service  ',
   };
 
   assert.deepEqual(loadConfig(env), {
@@ -39,7 +39,9 @@ test('loadConfig reports missing variables in deterministic order', () => {
     API_URL: 'https://api.example.com',
     CLIENT_ID: 'client-id',
     CLIENT_SECRET: 'client-secret',
+    SCOPE: '   ',
     ORACLE_USER: 'importer',
+    ORACLE_PASSWORD: '\t',
     ORACLE_CONNECT_STRING: 'db.example.com/service',
   };
 
