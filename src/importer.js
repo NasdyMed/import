@@ -12,7 +12,21 @@ function rejectionReason(event, references) {
   return null;
 }
 
+async function safeWarn(logger, payload) {
+  if (typeof logger?.warn !== 'function') return;
+
+  try {
+    await logger.warn(payload);
+  } catch {
+    // Logging is best-effort and must not interrupt the import.
+  }
+}
+
 async function runImport({ sddsClient, resolver, repository, logger, commitEveryPages = 20 }) {
+  if (!Number.isInteger(commitEveryPages) || commitEveryPages <= 0) {
+    throw new RangeError('commitEveryPages must be a positive integer');
+  }
+
   const summary = { pages: 0, received: 0, inserted: 0, rejected: 0 };
   let uncommittedPages = 0;
 
@@ -36,7 +50,7 @@ async function runImport({ sddsClient, resolver, repository, logger, commitEvery
 
         if (reason !== null) {
           summary.rejected += 1;
-          logger.warn({
+          await safeWarn(logger, {
             page: pageNumber,
             r_i_formula_code: event.r_i_formula_code,
             plant_code: event.plant_code,

@@ -121,3 +121,66 @@ test('rolls back and propagates an insertion failure without committing', async 
   assert.equal(rollbacks, 1);
   assert.equal(commits, 0);
 });
+
+test('rejection logging is optional and logger failures do not abort the import', async (t) => {
+  const loggerCases = [
+    ['absent logger', undefined],
+    ['rejected warning', { warn() { return Promise.reject(new Error('logger failed')); } }],
+  ];
+
+  for (const [name, logger] of loggerCases) {
+    await t.test(name, async () => {
+      const inserted = [];
+      let commits = 0;
+      const summary = await runImport({
+        sddsClient: {
+          async *pages() {
+            yield { pageNumber: 1, data: [event({ plant_code: '' }), event()] };
+          },
+        },
+        resolver: {
+          async resolvePage() {
+            return [{ frmId: 1, facCode: null }, { frmId: 2, facCode: 'FAC-2' }];
+          },
+        },
+        repository: {
+          async insertRows(rows) { inserted.push(...rows); },
+          async commit() { commits += 1; },
+          async rollback() { assert.fail('rollback should not be called'); },
+        },
+        logger,
+      });
+
+      assert.deepEqual(summary, { pages: 1, received: 2, inserted: 1, rejected: 1 });
+      assert.equal(inserted.length, 1);
+      assert.equal(commits, 1);
+    });
+  }
+});
+
+test('rejects invalid commit thresholds before starting import work', async (t) => {
+  for (const commitEveryPages of [0, -1, 1.5, NaN, '20']) {
+    await t.test(String(commitEveryPages), async () => {
+      let pageCalls = 0;
+      let rollbacks = 0;
+
+      await assert.rejects(
+        runImport({
+          sddsClient: { async *pages() { pageCalls += 1; } },
+          resolver: { async resolvePage() { return []; } },
+          repository: {
+            async insertRows() {},
+            async commit() {},
+            async rollback() { rollbacks += 1; },
+          },
+          logger: { warn() {} },
+          commitEveryPages,
+        }),
+        { name: 'RangeError', message: 'commitEveryPages must be a positive integer' },
+      );
+
+      assert.equal(pageCalls, 0);
+      assert.equal(rollbacks, 0);
+    });
+  }
+});
