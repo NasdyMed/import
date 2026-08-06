@@ -1,6 +1,5 @@
 function createSddsClient({ http, oauthClient, apiUrl, sleep, maxAttempts = 3 }) {
-  async function requestPage(page, initialToken) {
-    let token = initialToken;
+  async function requestPage(page, tokenState) {
     let refreshed = false;
     let attempt = 0;
 
@@ -9,13 +8,13 @@ function createSddsClient({ http, oauthClient, apiUrl, sleep, maxAttempts = 3 })
       try {
         return await http.get(apiUrl, {
           params: { page_size: 50, page },
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${tokenState.value}` },
         });
       } catch (error) {
         const status = error?.response?.status;
 
         if (status === 401 && !refreshed) {
-          token = await oauthClient.getToken();
+          tokenState.value = await oauthClient.getToken();
           refreshed = true;
           attempt -= 1;
           continue;
@@ -39,8 +38,8 @@ function createSddsClient({ http, oauthClient, apiUrl, sleep, maxAttempts = 3 })
 
   return {
     async *pages() {
-      const token = await oauthClient.getToken();
-      const first = responseData(await requestPage(1, token));
+      const tokenState = { value: await oauthClient.getToken() };
+      const first = responseData(await requestPage(1, tokenState));
       const pageCount = first.page_count;
 
       if (!Number.isInteger(pageCount) || pageCount < 1) {
@@ -50,7 +49,7 @@ function createSddsClient({ http, oauthClient, apiUrl, sleep, maxAttempts = 3 })
       yield { pageNumber: 1, data: first.data };
 
       for (let page = 2; page <= pageCount; page += 1) {
-        const payload = responseData(await requestPage(page, token));
+        const payload = responseData(await requestPage(page, tokenState));
         yield { pageNumber: page, data: payload.data };
       }
     },

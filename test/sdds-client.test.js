@@ -42,9 +42,10 @@ test('pages streams every page using the initial page count and exact request op
   })));
 });
 
-test('pages refreshes the token once on 401 and replays that request', async () => {
+test('pages reuses a refreshed token on following pages', async () => {
   const tokens = ['expired', 'fresh'];
   const authorizations = [];
+  let tokenCalls = 0;
   let calls = 0;
   const client = createSddsClient({
     http: {
@@ -52,17 +53,22 @@ test('pages refreshes the token once on 401 and replays that request', async () 
         authorizations.push(options.headers.Authorization);
         calls += 1;
         if (calls === 1) throw Object.assign(new Error('unauthorized'), { response: { status: 401 } });
-        return { data: { data: ['event'], page_count: 1 } };
+        return calls === 2
+          ? { data: { data: ['first'], page_count: 2 } }
+          : { data: { data: ['second'], page_count: 2 } };
       },
     },
-    oauthClient: { async getToken() { return tokens.shift(); } },
+    oauthClient: { async getToken() { tokenCalls += 1; return tokens.shift(); } },
     apiUrl: 'https://sdds.example.com/events',
     sleep: async () => {},
   });
 
-  assert.deepEqual(await collect(client.pages()), [{ pageNumber: 1, data: ['event'] }]);
-  assert.deepEqual(authorizations, ['Bearer expired', 'Bearer fresh']);
-  assert.equal(tokens.length, 0);
+  assert.deepEqual(await collect(client.pages()), [
+    { pageNumber: 1, data: ['first'] },
+    { pageNumber: 2, data: ['second'] },
+  ]);
+  assert.deepEqual(authorizations, ['Bearer expired', 'Bearer fresh', 'Bearer fresh']);
+  assert.equal(tokenCalls, 2);
 });
 
 test('pages retries 5xx errors up to maxAttempts with bounded delays', async () => {
