@@ -14,7 +14,7 @@ function createOAuthClient({ http, tokenUrl, clientId, clientSecret, scope }) {
       });
       const token = response?.data?.access_token;
 
-      if (!token) {
+      if (typeof token !== 'string' || token.trim().length === 0) {
         throw new Error('OAuth response does not contain access_token');
       }
 

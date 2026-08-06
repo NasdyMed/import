@@ -8,7 +8,7 @@ test('getToken requests and returns an OAuth client credentials token', async ()
   const http = {
     async post(url, body, options) {
       requests.push({ url, body, options });
-      return { data: { access_token: 'access-token' } };
+      return { data: { access_token: ' access-token ' } };
     },
   };
   const client = createOAuthClient({
@@ -21,7 +21,7 @@ test('getToken requests and returns an OAuth client credentials token', async ()
 
   const token = await client.getToken();
 
-  assert.equal(token, 'access-token');
+  assert.equal(token, ' access-token ');
   assert.deepEqual(requests, [
     {
       url: 'https://auth.example.com/token',
@@ -35,8 +35,10 @@ test('getToken requests and returns an OAuth client credentials token', async ()
   ]);
 });
 
-test('getToken rejects an OAuth response without a non-empty access token', async () => {
-  for (const accessToken of [undefined, '']) {
+test('getToken rejects an OAuth response without a non-empty string access token', async () => {
+  const malformedTokens = [undefined, '', '   ', {}, [], 123];
+
+  for (const accessToken of malformedTokens) {
     const http = {
       async post() {
         return { data: { access_token: accessToken } };
