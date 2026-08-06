@@ -1,16 +1,19 @@
-function resolveDependencies(dependencies) {
+function resolveDependencies(dependencies = {}, requireFn = require) {
   return {
-    loadEnv: dependencies.loadEnv ?? (() => require('dotenv').config({ quiet: true })),
-    loadConfig: dependencies.loadConfig ?? require('./config').loadConfig,
-    http: dependencies.http ?? require('axios'),
-    oracledb: dependencies.oracledb ?? require('oracledb'),
-    createOAuthClient: dependencies.createOAuthClient ?? require('./oauth-client').createOAuthClient,
-    createSddsClient: dependencies.createSddsClient ?? require('./sdds-client').createSddsClient,
+    loadEnv: dependencies.loadEnv ?? (() => requireFn('dotenv').config({ quiet: true })),
+    loadConfig: dependencies.loadConfig ?? requireFn('./config').loadConfig,
+    http: dependencies.http ?? requireFn('axios'),
+    oracledb: dependencies.oracledb ?? requireFn('oracledb'),
+    createOAuthClient:
+      dependencies.createOAuthClient ?? requireFn('./oauth-client').createOAuthClient,
+    createSddsClient: dependencies.createSddsClient ?? requireFn('./sdds-client').createSddsClient,
     createReferenceResolver:
-      dependencies.createReferenceResolver ?? require('./reference-resolver').createReferenceResolver,
+      dependencies.createReferenceResolver ??
+      requireFn('./reference-resolver').createReferenceResolver,
     createOracleRepository:
-      dependencies.createOracleRepository ?? require('./oracle-repository').createOracleRepository,
-    runImport: dependencies.runImport ?? require('./importer').runImport,
+      dependencies.createOracleRepository ??
+      requireFn('./oracle-repository').createOracleRepository,
+    runImport: dependencies.runImport ?? requireFn('./importer').runImport,
     logger: dependencies.logger ?? console,
     sleep:
       dependencies.sleep ??
@@ -21,6 +24,7 @@ function resolveDependencies(dependencies) {
 async function main(dependencies = {}) {
   const deps = resolveDependencies(dependencies);
   let connection;
+  let primaryError;
 
   deps.loadEnv();
   const config = deps.loadConfig();
@@ -38,18 +42,49 @@ async function main(dependencies = {}) {
     const repository = deps.createOracleRepository(connection, deps.oracledb);
 
     return await deps.runImport({ sddsClient, resolver, repository, logger: deps.logger });
+  } catch (error) {
+    primaryError = error;
+    throw error;
   } finally {
-    if (connection) await connection.close();
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        if (!primaryError) throw closeError;
+
+        try {
+          const target = Object(primaryError);
+          const property = !('closeError' in target)
+            ? 'closeError'
+            : !('cause' in target)
+              ? 'cause'
+              : null;
+          if (property) {
+            Object.defineProperty(primaryError, property, {
+              value: closeError,
+              configurable: true,
+            });
+          }
+        } catch {
+          // A non-extensible primary error must still remain the observed failure.
+        }
+      }
+    }
+  }
+}
+
+async function runCli(mainFn = main, output = console, processRef = process) {
+  try {
+    const summary = await mainFn();
+    output.log(JSON.stringify(summary));
+  } catch {
+    output.error('Échec de l’import SDDS vers Oracle');
+    processRef.exitCode = 1;
   }
 }
 
 if (require.main === module) {
-  main()
-    .then((summary) => console.log(JSON.stringify(summary)))
-    .catch((error) => {
-      console.error(error?.message || 'Erreur inconnue');
-      process.exitCode = 1;
-    });
+  runCli();
 }
 
-module.exports = { main };
+module.exports = { main, resolveDependencies, runCli };

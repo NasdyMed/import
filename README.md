@@ -36,6 +36,6 @@ Ne versionnez jamais `.env`, les mots de passe, les jetons ou tout autre secret.
 node src/index.js
 ```
 
-L'import parcourt l'API par pages de 50 éléments. Les événements dont les références formule ou usine sont absentes ou introuvables sont ignorés et journalisés. Les lignes valides sont insérées par lots avec `executeMany`, et une validation Oracle (`commit`) est effectuée toutes les 20 pages ainsi qu'à la fin. Le programme affiche uniquement un résumé final avec le nombre de pages, d'éléments reçus, insérés et rejetés.
+L'import parcourt l'API par pages de 50 éléments. Les événements dont les références formule ou usine sont absentes ou introuvables sont ignorés et font l'objet d'un avertissement dans les journaux. Les lignes valides sont insérées par lots avec `executeMany`, et une validation Oracle (`commit`) est effectuée toutes les 20 pages ainsi qu'à la fin. Avec le logger par défaut, la sortie contient ces avertissements de rejet, puis un résumé final avec le nombre de pages, d'éléments reçus, insérés et rejetés.
 
 En cas de redémarrage après une erreur, les lignes déjà validées restent dans la table cible. Avant de relancer, il faut donc soit vider manuellement les données concernées dans la cible, soit mettre en place une reprise manuelle au bon point afin d'éviter les doublons.

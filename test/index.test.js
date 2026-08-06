@@ -1,9 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { main } = require('../src/index');
+const { main, resolveDependencies, runCli } = require('../src/index');
 
-function createDependencies({ importError } = {}) {
+function createDependencies({ importError, closeError } = {}) {
   const calls = [];
   const config = {
     oauth: { tokenUrl: 'https://oauth.invalid', clientId: 'id', clientSecret: 'secret', scope: 'scope' },
@@ -14,6 +14,7 @@ function createDependencies({ importError } = {}) {
   const connection = {
     async close() {
       calls.push(['close']);
+      if (closeError) throw closeError;
     },
   };
   const oracledb = {
@@ -108,4 +109,100 @@ test('main referme Oracle puis propage une erreur d’import', async () => {
 
   assert.deepEqual(calls.at(-1), ['close']);
   assert.equal(calls.filter(([name]) => name === 'close').length, 1);
+});
+
+test('main conserve l’erreur d’import exacte et lui attache l’erreur de fermeture', async () => {
+  const importError = new Error('échec import');
+  const closeError = new Error('échec fermeture');
+  const { dependencies } = createDependencies({ importError, closeError });
+
+  await assert.rejects(main(dependencies), (error) => {
+    assert.equal(error, importError);
+    assert.equal(error.closeError, closeError);
+    return true;
+  });
+});
+
+test('main ne remplace pas un closeError existant et utilise cause', async () => {
+  const existingCloseError = new Error('fermeture précédente');
+  const importError = Object.assign(new Error('échec import'), { closeError: existingCloseError });
+  const closeError = new Error('échec fermeture actuel');
+  const { dependencies } = createDependencies({ importError, closeError });
+
+  await assert.rejects(main(dependencies), (error) => {
+    assert.equal(error, importError);
+    assert.equal(error.closeError, existingCloseError);
+    assert.equal(error.cause, closeError);
+    return true;
+  });
+});
+
+test('main propage l’erreur de fermeture lorsque l’import réussit', async () => {
+  const closeError = new Error('échec fermeture');
+  const { dependencies } = createDependencies({ closeError });
+
+  await assert.rejects(main(dependencies), (error) => error === closeError);
+});
+
+test('resolveDependencies charge les modules par requireFn et configure dotenv silencieusement', () => {
+  const required = [];
+  const dotenvCalls = [];
+  const modules = {
+    dotenv: { config(options) { dotenvCalls.push(options); } },
+    './config': { loadConfig: () => {} },
+    axios: { kind: 'http' },
+    oracledb: { kind: 'oracle' },
+    './oauth-client': { createOAuthClient: () => {} },
+    './sdds-client': { createSddsClient: () => {} },
+    './reference-resolver': { createReferenceResolver: () => {} },
+    './oracle-repository': { createOracleRepository: () => {} },
+    './importer': { runImport: () => {} },
+  };
+  const requireFn = (name) => {
+    required.push(name);
+    return modules[name];
+  };
+
+  const dependencies = resolveDependencies({}, requireFn);
+  dependencies.loadEnv();
+
+  assert.deepEqual(required, [
+    './config',
+    'axios',
+    'oracledb',
+    './oauth-client',
+    './sdds-client',
+    './reference-resolver',
+    './oracle-repository',
+    './importer',
+    'dotenv',
+  ]);
+  assert.deepEqual(dotenvCalls, [{ quiet: true }]);
+});
+
+test('runCli affiche le résumé JSON en succès', async () => {
+  const output = [];
+  const processRef = { exitCode: undefined };
+  const summary = { pages: 1, received: 2, inserted: 2, rejected: 0 };
+
+  await runCli(async () => summary, { log: (value) => output.push(value), error() {} }, processRef);
+
+  assert.deepEqual(output, [JSON.stringify(summary)]);
+  assert.equal(processRef.exitCode, undefined);
+});
+
+test('runCli masque l’erreur et fixe le code de sortie', async () => {
+  const stdout = [];
+  const stderr = [];
+  const processRef = { exitCode: undefined };
+
+  await runCli(
+    async () => { throw new Error('secret=très-sensible'); },
+    { log: (value) => stdout.push(value), error: (value) => stderr.push(value) },
+    processRef,
+  );
+
+  assert.deepEqual(stdout, []);
+  assert.deepEqual(stderr, ['Échec de l’import SDDS vers Oracle']);
+  assert.equal(processRef.exitCode, 1);
 });
