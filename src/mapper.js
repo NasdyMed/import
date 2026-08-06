@@ -13,11 +13,17 @@ function parseIsoDate(value) {
   }
 
   const [, year, month, day] = match;
-  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  const date = new Date(0);
+  date.setFullYear(Number(year), Number(month) - 1, Number(day));
+  date.setHours(0, 0, 0, 0);
   const isSameCalendarDate =
-    date.getUTCFullYear() === Number(year) &&
-    date.getUTCMonth() === Number(month) - 1 &&
-    date.getUTCDate() === Number(day);
+    date.getFullYear() === Number(year) &&
+    date.getMonth() === Number(month) - 1 &&
+    date.getDate() === Number(day) &&
+    date.getHours() === 0 &&
+    date.getMinutes() === 0 &&
+    date.getSeconds() === 0 &&
+    date.getMilliseconds() === 0;
 
   return isSameCalendarDate ? { ok: true, date } : { ok: false };
 }

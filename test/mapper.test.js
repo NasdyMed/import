@@ -26,7 +26,7 @@ test('mapEvent maps an event with both production dates', () => {
       facCode: 'FAC-001',
       facLabel: 'Paris Plant',
       frmLabel: null,
-      fabDate: new Date('2025-02-20T00:00:00.000Z'),
+      fabDate: new Date(2025, 1, 20),
       batchCode: null,
       firstFab: 'O',
       lastFab: 'O',
@@ -45,7 +45,7 @@ test('mapEvent maps an event with both production dates', () => {
       codeBatchPf: null,
       source: 'SDDS',
       frmCd: 'FORM-001',
-      firstFabDate: new Date('2025-01-15T00:00:00.000Z'),
+      firstFabDate: new Date(2025, 0, 15),
     },
   });
 });
@@ -62,7 +62,7 @@ test('mapEvent falls back to the first date when the last date is absent', () =>
   );
 
   assert.equal(result.ok, true);
-  assert.deepEqual(result.row.fabDate, new Date('2025-01-15T00:00:00.000Z'));
+  assert.deepEqual(result.row.fabDate, new Date(2025, 0, 15));
   assert.equal(result.row.firstFab, 'O');
   assert.equal(result.row.lastFab, 'N');
 });
@@ -97,5 +97,54 @@ test('mapEvent rejects an invalid non-null last date', () => {
       references,
     ),
     { ok: false, reason: 'Invalid last_batch_date' },
+  );
+});
+
+test('mapEvent creates Oracle date binds at local midnight', () => {
+  const result = mapEvent(
+    {
+      plant_name: 'Paris Plant',
+      r_i_formula_code: 'FORM-001',
+      first_batch_date: '2025-01-15',
+      last_batch_date: '2025-02-20',
+    },
+    references,
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    [
+      result.row.fabDate.getFullYear(),
+      result.row.fabDate.getMonth(),
+      result.row.fabDate.getDate(),
+      result.row.fabDate.getHours(),
+      result.row.fabDate.getMinutes(),
+      result.row.fabDate.getSeconds(),
+      result.row.fabDate.getMilliseconds(),
+    ],
+    [2025, 1, 20, 0, 0, 0, 0],
+  );
+});
+
+test('mapEvent rejects an invalid first date and malformed date strings', () => {
+  assert.deepEqual(
+    mapEvent(
+      {
+        first_batch_date: '2025-02-30',
+        last_batch_date: null,
+      },
+      references,
+    ),
+    { ok: false, reason: 'Invalid first_batch_date' },
+  );
+  assert.deepEqual(
+    mapEvent(
+      {
+        first_batch_date: '2025-1-15',
+        last_batch_date: null,
+      },
+      references,
+    ),
+    { ok: false, reason: 'Invalid first_batch_date' },
   );
 });
