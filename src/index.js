@@ -14,11 +14,20 @@ function resolveDependencies(dependencies = {}, requireFn = require) {
       dependencies.createOracleRepository ??
       requireFn('./oracle-repository').createOracleRepository,
     runImport: dependencies.runImport ?? requireFn('./importer').runImport,
-    logger: dependencies.logger ?? console,
+    createFileLogger:
+      dependencies.createFileLogger ?? requireFn('./file-logger').createFileLogger,
+    logger: dependencies.logger,
+    environment: dependencies.environment ?? process.env,
     sleep:
       dependencies.sleep ??
       ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))),
   };
+}
+
+function configureTls(environment = process.env) {
+  if (environment.ALLOW_INSECURE_TLS !== 'true') return false;
+  environment.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  return true;
 }
 
 async function main(dependencies = {}) {
@@ -27,7 +36,9 @@ async function main(dependencies = {}) {
   let primaryError;
 
   deps.loadEnv();
+  configureTls(deps.environment);
   const config = deps.loadConfig();
+  const logger = deps.logger ?? await deps.createFileLogger();
 
   try {
     connection = await deps.oracledb.getConnection(config.oracle);
@@ -41,7 +52,7 @@ async function main(dependencies = {}) {
     const resolver = deps.createReferenceResolver(connection);
     const repository = deps.createOracleRepository(connection, deps.oracledb);
 
-    return await deps.runImport({ sddsClient, resolver, repository, logger: deps.logger });
+    return await deps.runImport({ sddsClient, resolver, repository, logger });
   } catch (error) {
     primaryError = error;
     throw error;
@@ -87,4 +98,4 @@ if (require.main === module) {
   runCli();
 }
 
-module.exports = { main, resolveDependencies, runCli };
+module.exports = { configureTls, main, resolveDependencies, runCli };

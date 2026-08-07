@@ -12,14 +12,29 @@ function rejectionReason(event, references) {
   return null;
 }
 
-async function safeWarn(logger, payload) {
-  if (typeof logger?.warn !== 'function') return;
+async function safeLog(logger, level, payload) {
+  if (typeof logger?.[level] !== 'function') return;
 
   try {
-    await logger.warn(payload);
+    await logger[level](payload);
   } catch {
     // Logging is best-effort and must not interrupt the import.
   }
+}
+
+function errorDetails(error, page) {
+  const code = typeof error?.code === 'string' ? error.code : null;
+  const status = Number.isInteger(error?.response?.status) ? error.response.status : null;
+  const component = status !== null
+    ? 'http'
+    : error?.errorNum || /^(ORA|NJS|DPI)-/.test(code ?? '')
+      ? 'oracle'
+      : 'import';
+  const message = String(error?.message ?? 'Unknown import error')
+    .replace(/(Bearer\s+)[^\s]+/gi, '$1[REDACTED]')
+    .replace(/((?:client_secret|password)\s*[=:]\s*)[^&\s]+/gi, '$1[REDACTED]');
+
+  return { event: 'import_failed', page, component, code, status, message };
 }
 
 async function runImport({ sddsClient, resolver, repository, logger, commitEveryPages = 20 }) {
@@ -29,9 +44,11 @@ async function runImport({ sddsClient, resolver, repository, logger, commitEvery
 
   const summary = { pages: 0, received: 0, inserted: 0, rejected: 0 };
   let uncommittedPages = 0;
+  let currentPage = null;
 
   try {
     for await (const { pageNumber, data } of sddsClient.pages()) {
+      currentPage = pageNumber;
       summary.pages += 1;
       summary.received += data.length;
 
@@ -50,7 +67,8 @@ async function runImport({ sddsClient, resolver, repository, logger, commitEvery
 
         if (reason !== null) {
           summary.rejected += 1;
-          await safeWarn(logger, {
+          await safeLog(logger, 'warn', {
+            event: 'rejected_item',
             page: pageNumber,
             r_i_formula_code: event.r_i_formula_code,
             plant_code: event.plant_code,
@@ -64,19 +82,29 @@ async function runImport({ sddsClient, resolver, repository, logger, commitEvery
       await repository.insertRows(rows);
       summary.inserted += rows.length;
       uncommittedPages += 1;
+      await safeLog(logger, 'info', {
+        event: 'page_processed',
+        page: pageNumber,
+        received: data.length,
+        inserted: rows.length,
+        rejected: data.length - rows.length,
+      });
 
       if (uncommittedPages === commitEveryPages) {
         await repository.commit();
+        await safeLog(logger, 'info', { event: 'transaction_committed', page: pageNumber });
         uncommittedPages = 0;
       }
     }
 
     if (uncommittedPages > 0) {
       await repository.commit();
+      await safeLog(logger, 'info', { event: 'transaction_committed', page: currentPage });
     }
 
     return summary;
   } catch (error) {
+    await safeLog(logger, 'error', errorDetails(error, currentPage));
     try {
       await repository.rollback();
     } catch {

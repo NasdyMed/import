@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { main, resolveDependencies, runCli } = require('../src/index');
+const { configureTls, main, resolveDependencies, runCli } = require('../src/index');
 
 function createDependencies({ importError, closeError } = {}) {
   const calls = [];
@@ -44,6 +44,7 @@ function createDependencies({ importError, closeError } = {}) {
       },
       http,
       oracledb,
+      environment: {},
       logger,
       sleep,
       createOAuthClient(options) {
@@ -157,6 +158,7 @@ test('resolveDependencies charge les modules par requireFn et configure dotenv s
     './reference-resolver': { createReferenceResolver: () => {} },
     './oracle-repository': { createOracleRepository: () => {} },
     './importer': { runImport: () => {} },
+    './file-logger': { createFileLogger: () => {} },
   };
   const requireFn = (name) => {
     required.push(name);
@@ -175,6 +177,7 @@ test('resolveDependencies charge les modules par requireFn et configure dotenv s
     './reference-resolver',
     './oracle-repository',
     './importer',
+    './file-logger',
     'dotenv',
   ]);
   assert.deepEqual(dotenvCalls, [{ quiet: true }]);
@@ -205,4 +208,14 @@ test('runCli masque l’erreur et fixe le code de sortie', async () => {
   assert.deepEqual(stdout, []);
   assert.deepEqual(stderr, ['Échec de l’import SDDS vers Oracle']);
   assert.equal(processRef.exitCode, 1);
+});
+
+test('configureTls disables certificate validation only with explicit opt-in', () => {
+  const disabled = { ALLOW_INSECURE_TLS: 'false' };
+  const enabled = { ALLOW_INSECURE_TLS: 'true' };
+
+  assert.equal(configureTls(disabled), false);
+  assert.equal(disabled.NODE_TLS_REJECT_UNAUTHORIZED, undefined);
+  assert.equal(configureTls(enabled), true);
+  assert.equal(enabled.NODE_TLS_REJECT_UNAUTHORIZED, '0');
 });

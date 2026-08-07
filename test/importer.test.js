@@ -92,6 +92,7 @@ test('rejects missing and unresolved references plus invalid mappings while inse
     'Invalid last_batch_date',
   ]);
   assert.deepEqual(warnings[0], {
+    event: 'rejected_item',
     page: 7,
     r_i_formula_code: '  ',
     plant_code: 'PLANT-001',
@@ -120,6 +121,60 @@ test('rolls back and propagates an insertion failure without committing', async 
 
   assert.equal(rollbacks, 1);
   assert.equal(commits, 0);
+});
+
+test('logs commit progress and the fatal error with the last processed page', async () => {
+  const entries = [];
+  const databaseError = Object.assign(
+    new Error('ORA-12899: password=top-secret Bearer oauth-token'),
+    {
+    code: 'ORA-12899',
+    errorNum: 12899,
+    },
+  );
+  const sddsClient = {
+    async *pages() {
+      yield { pageNumber: 1, data: [] };
+      yield { pageNumber: 2, data: [] };
+    },
+  };
+  let inserts = 0;
+  const repository = {
+    async insertRows() {
+      inserts += 1;
+      if (inserts === 2) throw databaseError;
+    },
+    async commit() {},
+    async rollback() {},
+  };
+
+  await assert.rejects(
+    runImport({
+      sddsClient,
+      resolver: { async resolvePage() { return []; } },
+      repository,
+      logger: {
+        async info(entry) { entries.push({ level: 'info', ...entry }); },
+        async error(entry) { entries.push({ level: 'error', ...entry }); },
+      },
+      commitEveryPages: 1,
+    }),
+    (error) => error === databaseError,
+  );
+
+  assert.deepEqual(entries, [
+    { level: 'info', event: 'page_processed', page: 1, received: 0, inserted: 0, rejected: 0 },
+    { level: 'info', event: 'transaction_committed', page: 1 },
+    {
+      level: 'error',
+      event: 'import_failed',
+      page: 2,
+      component: 'oracle',
+      code: 'ORA-12899',
+      status: null,
+      message: 'ORA-12899: password=[REDACTED] Bearer [REDACTED]',
+    },
+  ]);
 });
 
 test('rejection logging is optional and logger failures do not abort the import', async (t) => {
