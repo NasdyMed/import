@@ -21,7 +21,14 @@ function loadConfig(env = process.env) {
     );
   }
 
+  const importMode = env.IMPORT_MODE?.trim().toLowerCase();
+  const effectiveImportMode = importMode || 'production';
+  if (!['production', 'dev'].includes(effectiveImportMode)) {
+    throw new Error("IMPORT_MODE doit être 'production' ou 'dev'");
+  }
+
   return {
+    ...(importMode ? { importMode: effectiveImportMode } : {}),
     oauth: {
       tokenUrl: env.TOKEN_URL,
       clientId: env.CLIENT_ID,

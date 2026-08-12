@@ -49,7 +49,7 @@ function mapEvent(event, references) {
       frmId: references.frmId,
       facCode: references.facCode,
       facLabel: event.plant_name,
-      frmLabel: null,
+      frmLabel: '-',
       fabDate: lastBatchDate.date || firstBatchDate.date,
       batchCode: null,
       firstFab: firstBatchDate.date === null ? 'N' : 'O',

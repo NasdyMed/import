@@ -42,7 +42,10 @@ async function runImport({ sddsClient, resolver, repository, logger, commitEvery
     throw new RangeError('commitEveryPages must be a positive integer');
   }
 
-  const summary = { pages: 0, received: 0, inserted: 0, rejected: 0 };
+  const devMode = repository.mode === 'dev';
+  const summary = devMode
+    ? { pages: 0, received: 0, inserted: 0, generated: 0, rejected: 0 }
+    : { pages: 0, received: 0, inserted: 0, rejected: 0 };
   let uncommittedPages = 0;
   let currentPage = null;
 
@@ -80,24 +83,33 @@ async function runImport({ sddsClient, resolver, repository, logger, commitEvery
       }
 
       await repository.insertRows(rows);
-      summary.inserted += rows.length;
+      if (devMode) summary.generated += rows.length;
+      else summary.inserted += rows.length;
       uncommittedPages += 1;
-      await safeLog(logger, 'info', {
+      const pageLog = {
         event: 'page_processed',
         page: pageNumber,
         received: data.length,
-        inserted: rows.length,
+        inserted: devMode ? 0 : rows.length,
         rejected: data.length - rows.length,
-      });
+      };
+      if (devMode) pageLog.generated = rows.length;
+      await safeLog(logger, 'info', pageLog);
 
-      if (uncommittedPages === commitEveryPages) {
+      if (typeof repository.completePage === 'function') {
+        await repository.completePage(pageNumber);
+      }
+
+      if (!devMode && uncommittedPages === commitEveryPages) {
         await repository.commit();
         await safeLog(logger, 'info', { event: 'transaction_committed', page: pageNumber });
         uncommittedPages = 0;
       }
     }
 
-    if (uncommittedPages > 0) {
+    if (devMode && typeof repository.finish === 'function') {
+      await repository.finish();
+    } else if (uncommittedPages > 0) {
       await repository.commit();
       await safeLog(logger, 'info', { event: 'transaction_committed', page: currentPage });
     }

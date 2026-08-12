@@ -25,7 +25,7 @@ test('mapEvent maps an event with both production dates', () => {
       frmId: 42,
       facCode: 'FAC-001',
       facLabel: 'Paris Plant',
-      frmLabel: null,
+      frmLabel: '-',
       fabDate: new Date(2025, 1, 20),
       batchCode: null,
       firstFab: 'O',

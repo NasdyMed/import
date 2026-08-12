@@ -13,6 +13,10 @@ function resolveDependencies(dependencies = {}, requireFn = require) {
     createOracleRepository:
       dependencies.createOracleRepository ??
       requireFn('./oracle-repository').createOracleRepository,
+    createSqlFileRepository: dependencies.createSqlFileRepository,
+    loadSqlFileRepository:
+      dependencies.loadSqlFileRepository ??
+      (() => requireFn('./sql-file-repository').createSqlFileRepository),
     runImport: dependencies.runImport ?? requireFn('./importer').runImport,
     createFileLogger:
       dependencies.createFileLogger ?? requireFn('./file-logger').createFileLogger,
@@ -50,7 +54,9 @@ async function main(dependencies = {}) {
       sleep: deps.sleep,
     });
     const resolver = deps.createReferenceResolver(connection);
-    const repository = deps.createOracleRepository(connection, deps.oracledb);
+    const repository = config.importMode === 'dev'
+      ? (deps.createSqlFileRepository ?? deps.loadSqlFileRepository())({ logger })
+      : deps.createOracleRepository(connection, deps.oracledb);
 
     return await deps.runImport({ sddsClient, resolver, repository, logger });
   } catch (error) {
