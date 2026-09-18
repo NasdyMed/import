@@ -43,6 +43,32 @@ function mapEvent(event, references) {
     return { ok: false, reason: 'Invalid last_batch_date' };
   }
 
+  const declaredStatus = event.plant_declared_formula_status_text;
+  const sapStatus = event.plant_sap_formula_status_text;
+  const effectiveStatus =
+    typeof declaredStatus === 'string' && declaredStatus.trim() !== ''
+      ? declaredStatus
+      : sapStatus;
+
+  if (typeof effectiveStatus !== 'string' || effectiveStatus.trim() === '') {
+    return { ok: false, reason: 'missing_production_status' };
+  }
+
+  const normalizedStatus = effectiveStatus.trim().toLowerCase();
+  if (normalizedStatus !== 'in production' && normalizedStatus !== 'end production') {
+    return { ok: false, reason: 'unsupported_production_status' };
+  }
+
+  if (normalizedStatus === 'in production' && firstBatchDate.date === null) {
+    return { ok: false, reason: 'missing_first_batch_date_for_in_production' };
+  }
+
+  if (normalizedStatus === 'end production' && lastBatchDate.date === null) {
+    return { ok: false, reason: 'missing_last_batch_date_for_end_production' };
+  }
+
+  const isEndProduction = normalizedStatus === 'end production';
+
   return {
     ok: true,
     row: {
@@ -50,10 +76,10 @@ function mapEvent(event, references) {
       facCode: references.facCode,
       facLabel: event.plant_name,
       frmLabel: '-',
-      fabDate: lastBatchDate.date || firstBatchDate.date,
+      fabDate: isEndProduction ? lastBatchDate.date : firstBatchDate.date,
       batchCode: null,
-      firstFab: firstBatchDate.date === null ? 'N' : 'O',
-      lastFab: lastBatchDate.date === null ? 'N' : 'O',
+      firstFab: 'O',
+      lastFab: isEndProduction ? 'O' : 'N',
       derogation: null,
       startDerogation: null,
       endDerogation: null,
@@ -69,7 +95,9 @@ function mapEvent(event, references) {
       codeBatchPf: null,
       source: 'SDDS',
       frmCd: event.r_i_formula_code,
-      firstFabDate: firstBatchDate.date,
+      firstFabDate: null,
+      plantSapStatus: sapStatus ?? null,
+      plantDeclaredStatus: declaredStatus ?? null,
     },
   };
 }
