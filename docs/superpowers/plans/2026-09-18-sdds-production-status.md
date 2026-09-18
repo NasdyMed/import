@@ -32,14 +32,14 @@
 Ajouter dans `test/mapper.test.js` des tests qui imposent les deux règles principales :
 
 ```js
-test('maps In Production from the declared status', () => {
+test('maps in production from the declared status', () => {
   const result = mapEvent({
     plant_name: 'Paris Plant',
     r_i_formula_code: 'FORM-001',
     first_batch_date: '2025-01-15',
     last_batch_date: '2025-02-20',
-    plant_declared_formula_status_text: '  In Production  ',
-    plant_sap_formula_status_text: 'End Production',
+    plant_declared_formula_status_text: '  in production  ',
+    plant_sap_formula_status_text: 'end of production',
   }, references);
 
   assert.equal(result.ok, true);
@@ -47,18 +47,18 @@ test('maps In Production from the declared status', () => {
   assert.equal(result.row.firstFab, 'O');
   assert.equal(result.row.lastFab, 'N');
   assert.equal(result.row.firstFabDate, null);
-  assert.equal(result.row.plantDeclaredStatus, '  In Production  ');
-  assert.equal(result.row.plantSapStatus, 'End Production');
+  assert.equal(result.row.plantDeclaredStatus, '  in production  ');
+  assert.equal(result.row.plantSapStatus, 'end of production');
 });
 
-test('maps End Production from SAP when declared status is blank', () => {
+test('maps end of production from SAP when declared status is blank', () => {
   const result = mapEvent({
     plant_name: 'Paris Plant',
     r_i_formula_code: 'FORM-001',
     first_batch_date: '2025-01-15',
     last_batch_date: '2025-02-20',
     plant_declared_formula_status_text: '   ',
-    plant_sap_formula_status_text: 'eNd PrOdUcTiOn',
+    plant_sap_formula_status_text: 'end of production',
   }, references);
 
   assert.equal(result.ok, true);
@@ -84,7 +84,7 @@ test('rejects missing and unsupported production statuses', () => {
     first_batch_date: '2025-01-15',
     last_batch_date: null,
     plant_declared_formula_status_text: 'Paused',
-    plant_sap_formula_status_text: 'In Production',
+    plant_sap_formula_status_text: 'in production',
   }, references), { ok: false, reason: 'unsupported_production_status' });
 });
 
@@ -92,7 +92,7 @@ test('rejects a recognized status without its required date', () => {
   assert.deepEqual(mapEvent({
     first_batch_date: null,
     last_batch_date: '2025-02-20',
-    plant_declared_formula_status_text: 'In Production',
+    plant_declared_formula_status_text: 'in production',
   }, references), {
     ok: false,
     reason: 'missing_first_batch_date_for_in_production',
@@ -101,7 +101,7 @@ test('rejects a recognized status without its required date', () => {
   assert.deepEqual(mapEvent({
     first_batch_date: '2025-01-15',
     last_batch_date: null,
-    plant_declared_formula_status_text: 'End Production',
+    plant_declared_formula_status_text: 'end of production',
   }, references), {
     ok: false,
     reason: 'missing_last_batch_date_for_end_production',
@@ -150,7 +150,7 @@ if (status === 'in production') {
   }
   fabDate = firstBatchDate.date;
   lastFab = 'N';
-} else if (status === 'end production') {
+} else if (status === 'end of production') {
   if (lastBatchDate.date === null) {
     return { ok: false, reason: 'missing_last_batch_date_for_end_production' };
   }
@@ -196,8 +196,8 @@ git commit -m "feat: map SDDS production statuses"
 Ajouter à la ligne de test :
 
 ```js
-plantSapStatus: 'End Production',
-plantDeclaredStatus: 'In Production',
+plantSapStatus: 'end of production',
+plantDeclaredStatus: 'in production',
 firstFabDate: null,
 ```
 
@@ -291,12 +291,12 @@ test('rowToInsert includes both SDDS production statuses', () => {
     source: 'SDDS',
     frmCd: 'FORM-1',
     firstFabDate: null,
-    plantSapStatus: 'End Production',
-    plantDeclaredStatus: "Director's In Production",
+    plantSapStatus: 'end of production',
+    plantDeclaredStatus: "Director's in production",
   });
 
   assert.match(sql, /FIRST_FAB_DATE, PLANT_SAP_STATUS, PLANT_DECLARED_STATUS/);
-  assert.match(sql, /NULL, 'End Production', 'Director''s In Production'\);$/);
+  assert.match(sql, /NULL, 'end of production', 'Director''s in production'\);$/);
 });
 ```
 
@@ -341,8 +341,8 @@ Dans la fonction `event`, remplacer les dates nulles et ajouter un statut nomina
 ```js
 first_batch_date: '2025-01-15',
 last_batch_date: null,
-plant_declared_formula_status_text: 'In Production',
-plant_sap_formula_status_text: 'In Production',
+plant_declared_formula_status_text: 'in production',
+plant_sap_formula_status_text: 'in production',
 ```
 
 - [ ] **Step 2: Ajouter un rejet métier et vérifier son contexte journalisé**
@@ -353,7 +353,7 @@ Dans le test des rejets, ajouter un événement avec :
 event({
   r_i_formula_code: 'BAD-STATUS',
   plant_declared_formula_status_text: 'Paused',
-  plant_sap_formula_status_text: 'End Production',
+  plant_sap_formula_status_text: 'end of production',
 })
 ```
 
@@ -366,7 +366,7 @@ Lui associer des références résolues et vérifier que l'entrée du journal co
   r_i_formula_code: 'BAD-STATUS',
   plant_code: 'PLANT-001',
   plant_declared_formula_status_text: 'Paused',
-  plant_sap_formula_status_text: 'End Production',
+  plant_sap_formula_status_text: 'end of production',
   reason: 'unsupported_production_status',
 }
 ```

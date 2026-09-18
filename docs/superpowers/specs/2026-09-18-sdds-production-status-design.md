@@ -23,7 +23,7 @@ La valeur retenue est normalisée uniquement pour la comparaison : suppression d
 | Statut effectif normalisé | `FAB_DATE` | `FIRST_FAB` | `LAST_FAB` |
 |---|---|---|---|
 | `in production` | `first_batch_date` | `O` | `N` |
-| `end production` | `last_batch_date` | `O` | `O` |
+| `end of production` | `last_batch_date` | `O` | `O` |
 
 Pour toutes les lignes acceptées :
 
@@ -38,9 +38,9 @@ Le reste du mapping existant demeure inchangé.
 Une ligne est rejetée sans interrompre le traitement des autres lignes dans les cas suivants :
 
 - aucun statut effectif n'est disponible : `missing_production_status` ;
-- le statut effectif est différent de `In Production` et `End Production`, sans tenir compte de la casse : `unsupported_production_status` ;
-- le statut est `In Production` et `first_batch_date` est absente : `missing_first_batch_date_for_in_production` ;
-- le statut est `End Production` et `last_batch_date` est absente : `missing_last_batch_date_for_end_production` ;
+- le statut effectif est différent de `in production` et `end of production`, sans tenir compte de la casse : `unsupported_production_status` ;
+- le statut est `in production` et `first_batch_date` est absente : `missing_first_batch_date_for_in_production` ;
+- le statut est `end of production` et `last_batch_date` est absente : `missing_last_batch_date_for_end_production` ;
 - une date non nulle est invalide : les motifs de rejet existants relatifs aux dates sont conservés.
 
 Chaque rejet est écrit dans le journal avec la page, le code formule, le code usine et le motif. Les valeurs des statuts peuvent être ajoutées au contexte du journal afin de faciliter le diagnostic.
@@ -80,14 +80,14 @@ Les tests couvrent au minimum :
 1. priorité du statut déclaré sur le statut SAP ;
 2. repli sur le statut SAP quand le statut déclaré est nul, vide ou composé d'espaces ;
 3. comparaison insensible à la casse et aux espaces externes ;
-4. mapping de `In Production` avec `first_batch_date` ;
-5. mapping de `End Production` avec `last_batch_date` ;
+4. mapping de `in production` avec `first_batch_date` ;
+5. mapping de `end of production` avec `last_batch_date` ;
 6. `FIRST_FAB_DATE` toujours à `NULL` ;
 7. conservation des valeurs originales des deux statuts ;
 8. rejet d'un statut absent ;
 9. rejet d'un statut inconnu ;
-10. rejet de `In Production` sans première date ;
-11. rejet de `End Production` sans dernière date ;
+10. rejet de `in production` sans première date ;
+11. rejet de `end of production` sans dernière date ;
 12. présence des nouvelles colonnes dans l'INSERT Oracle et les fichiers SQL.
 
 ## Hors périmètre

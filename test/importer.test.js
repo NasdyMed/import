@@ -10,8 +10,8 @@ function event(overrides = {}) {
     plant_name: 'Paris Plant',
     first_batch_date: '2025-01-15',
     last_batch_date: null,
-    plant_declared_formula_status_text: 'In Production',
-    plant_sap_formula_status_text: 'In Production',
+    plant_declared_formula_status_text: 'in production',
+    plant_sap_formula_status_text: 'in production',
     ...overrides,
   };
 }
@@ -57,7 +57,7 @@ test('rejects missing and unresolved references plus invalid mappings while inse
     event({
       r_i_formula_code: 'BAD-STATUS',
       plant_declared_formula_status_text: 'Paused',
-      plant_sap_formula_status_text: 'End Production',
+      plant_sap_formula_status_text: 'end of production',
     }),
     event({ r_i_formula_code: 'VALID' }),
   ];
@@ -105,8 +105,8 @@ test('rejects missing and unresolved references plus invalid mappings while inse
     page: 7,
     r_i_formula_code: '  ',
     plant_code: 'PLANT-001',
-    plant_declared_formula_status_text: 'In Production',
-    plant_sap_formula_status_text: 'In Production',
+    plant_declared_formula_status_text: 'in production',
+    plant_sap_formula_status_text: 'in production',
     reason: 'missing_formula_code',
   });
   assert.deepEqual(warnings[5], {
@@ -115,7 +115,7 @@ test('rejects missing and unresolved references plus invalid mappings while inse
     r_i_formula_code: 'BAD-STATUS',
     plant_code: 'PLANT-001',
     plant_declared_formula_status_text: 'Paused',
-    plant_sap_formula_status_text: 'End Production',
+    plant_sap_formula_status_text: 'end of production',
     reason: 'unsupported_production_status',
   });
 });

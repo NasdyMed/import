@@ -55,7 +55,7 @@ function mapEvent(event, references) {
   }
 
   const normalizedStatus = effectiveStatus.trim().toLowerCase();
-  if (normalizedStatus !== 'in production' && normalizedStatus !== 'end production') {
+  if (normalizedStatus !== 'in production' && normalizedStatus !== 'end of production') {
     return { ok: false, reason: 'unsupported_production_status' };
   }
 
@@ -63,11 +63,11 @@ function mapEvent(event, references) {
     return { ok: false, reason: 'missing_first_batch_date_for_in_production' };
   }
 
-  if (normalizedStatus === 'end production' && lastBatchDate.date === null) {
+  if (normalizedStatus === 'end of production' && lastBatchDate.date === null) {
     return { ok: false, reason: 'missing_last_batch_date_for_end_production' };
   }
 
-  const isEndProduction = normalizedStatus === 'end production';
+  const isEndProduction = normalizedStatus === 'end of production';
 
   return {
     ok: true,

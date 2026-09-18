@@ -10,17 +10,17 @@ function event(overrides = {}) {
     plant_name: 'Paris Plant',
     r_i_formula_code: 'FORM-001',
     plant_declared_formula_status_text: null,
-    plant_sap_formula_status_text: 'In Production',
+    plant_sap_formula_status_text: 'in production',
     first_batch_date: '2025-01-15',
     last_batch_date: '2025-02-20',
     ...overrides,
   };
 }
 
-test('maps In Production from the declared status and preserves original statuses', () => {
+test('maps in production from the declared status and preserves original statuses', () => {
   const result = mapEvent(event({
     plant_declared_formula_status_text: '  iN pRoDuCtIoN  ',
-    plant_sap_formula_status_text: 'End Production',
+    plant_sap_formula_status_text: 'end of production',
   }), references);
 
   assert.equal(result.ok, true);
@@ -29,14 +29,14 @@ test('maps In Production from the declared status and preserves original statuse
   assert.equal(result.row.lastFab, 'N');
   assert.equal(result.row.firstFabDate, null);
   assert.equal(result.row.plantDeclaredStatus, '  iN pRoDuCtIoN  ');
-  assert.equal(result.row.plantSapStatus, 'End Production');
+  assert.equal(result.row.plantSapStatus, 'end of production');
 });
 
 for (const declaredStatus of [null, '', '   ']) {
   test(`falls back to SAP status when declared status is ${JSON.stringify(declaredStatus)}`, () => {
     const result = mapEvent(event({
       plant_declared_formula_status_text: declaredStatus,
-      plant_sap_formula_status_text: '  eNd PrOdUcTiOn ',
+      plant_sap_formula_status_text: '  EnD oF PrOdUcTiOn ',
     }), references);
 
     assert.equal(result.ok, true);
@@ -45,7 +45,7 @@ for (const declaredStatus of [null, '', '   ']) {
     assert.equal(result.row.lastFab, 'O');
     assert.equal(result.row.firstFabDate, null);
     assert.equal(result.row.plantDeclaredStatus, declaredStatus);
-    assert.equal(result.row.plantSapStatus, '  eNd PrOdUcTiOn ');
+    assert.equal(result.row.plantSapStatus, '  EnD oF PrOdUcTiOn ');
   });
 }
 
@@ -56,14 +56,14 @@ test('normalizes undefined declared and SAP status values to null in the row', (
 
   assert.equal(result.ok, true);
   assert.equal(result.row.plantDeclaredStatus, null);
-  assert.equal(result.row.plantSapStatus, 'In Production');
+  assert.equal(result.row.plantSapStatus, 'in production');
 
-  const declaredInput = event({ plant_declared_formula_status_text: 'In Production' });
+  const declaredInput = event({ plant_declared_formula_status_text: 'in production' });
   delete declaredInput.plant_sap_formula_status_text;
   const declaredResult = mapEvent(declaredInput, references);
 
   assert.equal(declaredResult.ok, true);
-  assert.equal(declaredResult.row.plantDeclaredStatus, 'In Production');
+  assert.equal(declaredResult.row.plantDeclaredStatus, 'in production');
   assert.equal(declaredResult.row.plantSapStatus, null);
 });
 
@@ -82,20 +82,20 @@ test('rejects an event without an effective production status', () => {
 test('rejects an unsupported effective production status', () => {
   assert.deepEqual(mapEvent(event({
     plant_declared_formula_status_text: 'Planned',
-    plant_sap_formula_status_text: 'In Production',
+    plant_sap_formula_status_text: 'in production',
   }), references), { ok: false, reason: 'unsupported_production_status' });
 });
 
-test('requires first_batch_date for In Production', () => {
+test('requires first_batch_date for in production', () => {
   assert.deepEqual(mapEvent(event({ first_batch_date: null }), references), {
     ok: false,
     reason: 'missing_first_batch_date_for_in_production',
   });
 });
 
-test('requires last_batch_date for End Production', () => {
+test('requires last_batch_date for end of production', () => {
   assert.deepEqual(mapEvent(event({
-    plant_declared_formula_status_text: 'End Production',
+    plant_declared_formula_status_text: 'end of production',
     last_batch_date: null,
   }), references), {
     ok: false,
@@ -109,7 +109,7 @@ test('validates every non-null date, including the date not selected by the stat
     reason: 'Invalid last_batch_date',
   });
   assert.deepEqual(mapEvent(event({
-    plant_declared_formula_status_text: 'End Production',
+    plant_declared_formula_status_text: 'end of production',
     first_batch_date: '2025-02-30',
   }), references), { ok: false, reason: 'Invalid first_batch_date' });
 });
