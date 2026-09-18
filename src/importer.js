@@ -75,6 +75,8 @@ async function runImport({ sddsClient, resolver, repository, logger, commitEvery
             page: pageNumber,
             r_i_formula_code: event.r_i_formula_code,
             plant_code: event.plant_code,
+            plant_declared_formula_status_text: event.plant_declared_formula_status_text ?? null,
+            plant_sap_formula_status_text: event.plant_sap_formula_status_text ?? null,
             reason,
           });
         } else {
