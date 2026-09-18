@@ -4,13 +4,15 @@ const SQL = `
     FIRST_FAB, LAST_FAB, DEROGATION, START_DEROGATION, END_DEROGATION,
     COMMENT_DEROGATION, SUBCONTRACTED, FULLBUY, PRODUCER_CODE,
     PRODUCER_LABEL, PRODUCER_COUNTRY, UPDATE_DATE, SOURCE, ID_SATURNE,
-    FLAG_DELETE_SATURNE, CODE_BATCH_PF, FRM_CD, TIMESTAMP, FIRST_FAB_DATE
+    FLAG_DELETE_SATURNE, CODE_BATCH_PF, FRM_CD, TIMESTAMP, FIRST_FAB_DATE,
+    PLANT_SAP_STATUS, PLANT_DECLARED_STATUS
   ) VALUES (
     :frmId, :facCode, :facLabel, :frmLabel, :fabDate, :batchCode,
     :firstFab, :lastFab, :derogation, :startDerogation, :endDerogation,
     :commentDerogation, :subcontracted, :fullbuy, :producerCode,
     :producerLabel, :producerCountry, :updateDate, :source, :idSaturne,
-    :flagDeleteSaturne, :codeBatchPf, :frmCd, SYSDATE, :firstFabDate
+    :flagDeleteSaturne, :codeBatchPf, :frmCd, SYSDATE, :firstFabDate,
+    :plantSapStatus, :plantDeclaredStatus
   )`;
 
 function createOracleRepository(connection, oracledb) {
@@ -40,6 +42,8 @@ function createOracleRepository(connection, oracledb) {
     codeBatchPf: string(255),
     frmCd: string(255),
     firstFabDate: { type: oracledb.DATE },
+    plantSapStatus: string(255),
+    plantDeclaredStatus: string(255),
   };
 
   return {
