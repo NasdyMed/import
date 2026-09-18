@@ -8,8 +8,10 @@ function event(overrides = {}) {
     r_i_formula_code: 'FORM-001',
     plant_code: 'PLANT-001',
     plant_name: 'Paris Plant',
-    first_batch_date: null,
+    first_batch_date: '2025-01-15',
     last_batch_date: null,
+    plant_declared_formula_status_text: 'In Production',
+    plant_sap_formula_status_text: 'In Production',
     ...overrides,
   };
 }
