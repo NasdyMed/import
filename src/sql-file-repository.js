@@ -27,6 +27,8 @@ const COLUMNS = [
   ['FRM_CD', 'frmCd'],
   ['TIMESTAMP', null],
   ['FIRST_FAB_DATE', 'firstFabDate'],
+  ['PLANT_SAP_STATUS', 'plantSapStatus'],
+  ['PLANT_DECLARED_STATUS', 'plantDeclaredStatus'],
 ];
 
 function padPage(pageNumber) {

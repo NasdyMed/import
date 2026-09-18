@@ -8,8 +8,10 @@ function event(overrides = {}) {
     r_i_formula_code: 'FORM-001',
     plant_code: 'PLANT-001',
     plant_name: 'Paris Plant',
-    first_batch_date: null,
+    first_batch_date: '2025-01-15',
     last_batch_date: null,
+    plant_declared_formula_status_text: 'in production',
+    plant_sap_formula_status_text: 'in production',
     ...overrides,
   };
 }
@@ -52,6 +54,11 @@ test('rejects missing and unresolved references plus invalid mappings while inse
     event({ r_i_formula_code: 'UNKNOWN-FORM' }),
     event({ plant_code: 'UNKNOWN-PLANT' }),
     event({ last_batch_date: '2025-02-30' }),
+    event({
+      r_i_formula_code: 'BAD-STATUS',
+      plant_declared_formula_status_text: 'Paused',
+      plant_sap_formula_status_text: 'end of production',
+    }),
     event({ r_i_formula_code: 'VALID' }),
   ];
   const references = [
@@ -60,6 +67,7 @@ test('rejects missing and unresolved references plus invalid mappings while inse
     { frmId: null, facCode: 'FAC-1' },
     { frmId: 1, facCode: null },
     { frmId: 1, facCode: 'FAC-1' },
+    { frmId: 3, facCode: 'FAC-3' },
     { frmId: 2, facCode: 'FAC-2' },
   ];
   const inserted = [];
@@ -78,7 +86,7 @@ test('rejects missing and unresolved references plus invalid mappings while inse
     logger: { warn(value) { warnings.push(value); } },
   });
 
-  assert.deepEqual(summary, { pages: 1, received: 6, inserted: 1, rejected: 5 });
+  assert.deepEqual(summary, { pages: 1, received: 7, inserted: 1, rejected: 6 });
   assert.equal(resolveCalls, 1);
   assert.equal(commits, 1);
   assert.equal(inserted.length, 1);
@@ -90,13 +98,25 @@ test('rejects missing and unresolved references plus invalid mappings while inse
     'unresolved_formula_code',
     'unresolved_plant_code',
     'Invalid last_batch_date',
+    'unsupported_production_status',
   ]);
   assert.deepEqual(warnings[0], {
     event: 'rejected_item',
     page: 7,
     r_i_formula_code: '  ',
     plant_code: 'PLANT-001',
+    plant_declared_formula_status_text: 'in production',
+    plant_sap_formula_status_text: 'in production',
     reason: 'missing_formula_code',
+  });
+  assert.deepEqual(warnings[5], {
+    event: 'rejected_item',
+    page: 7,
+    r_i_formula_code: 'BAD-STATUS',
+    plant_code: 'PLANT-001',
+    plant_declared_formula_status_text: 'Paused',
+    plant_sap_formula_status_text: 'end of production',
+    reason: 'unsupported_production_status',
   });
 });
 

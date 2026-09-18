@@ -41,6 +41,7 @@ test('insertRows bulk inserts mapped rows with the required SQL and bind options
     producerCountry: null, updateDate: null, source: 'SDDS', idSaturne: null,
     flagDeleteSaturne: null, codeBatchPf: null, frmCd: 'FORM-1',
     firstFabDate: new Date('2025-01-15T00:00:00Z'),
+    plantSapStatus: 'ACTIVE', plantDeclaredStatus: 'DECLARED',
   };
 
   const result = await createOracleRepository(connection, oracledb).insertRows([row]);
@@ -56,9 +57,10 @@ test('insertRows bulk inserts mapped rows with the required SQL and bind options
     'COMMENT_DEROGATION', 'SUBCONTRACTED', 'FULLBUY', 'PRODUCER_CODE',
     'PRODUCER_LABEL', 'PRODUCER_COUNTRY', 'UPDATE_DATE', 'SOURCE', 'ID_SATURNE',
     'FLAG_DELETE_SATURNE', 'CODE_BATCH_PF', 'FRM_CD', 'TIMESTAMP', 'FIRST_FAB_DATE',
+    'PLANT_SAP_STATUS', 'PLANT_DECLARED_STATUS',
   ]);
   assert.match(sql, /INSERT INTO fl_formula_import\.dgo_production_event_v2/i);
-  assert.match(sql, /:frmCd\s*,\s*SYSDATE\s*,\s*:firstFabDate/i);
+  assert.match(sql, /:frmCd\s*,\s*SYSDATE\s*,\s*:firstFabDate\s*,\s*:plantSapStatus\s*,\s*:plantDeclaredStatus/i);
   assert.deepEqual(rows, [row]);
   assert.deepEqual(options, {
     autoCommit: false,
@@ -76,6 +78,8 @@ test('insertRows bulk inserts mapped rows with the required SQL and bind options
       source: { type: 'STRING', maxSize: 10 }, idSaturne: { type: 'STRING', maxSize: 255 },
       flagDeleteSaturne: { type: 'STRING', maxSize: 10 }, codeBatchPf: { type: 'STRING', maxSize: 255 },
       frmCd: { type: 'STRING', maxSize: 255 }, firstFabDate: { type: 'DATE' },
+      plantSapStatus: { type: 'STRING', maxSize: 255 },
+      plantDeclaredStatus: { type: 'STRING', maxSize: 255 },
     },
   });
 });
